@@ -1,0 +1,453 @@
+/* ── Curriculum Split Layout ── */
+.curriculum-layout {
+  display: flex;
+  flex: 1;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Resizer Handle ── */
+.resizer-handle {
+  width: 6px;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 20;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+}
+
+.resizer-handle:hover,
+.resizer-handle:active {
+  background: hsla(var(--accent-primary), 0.5);
+}
+
+/* ── Chat Container ── */
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: hsl(var(--bg-primary));
+  position: relative;
+  min-width: 0;
+}
+
+.chat-header {
+  height: var(--header-height);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid hsla(var(--text-primary), 0.05);
+  background: hsla(var(--bg-primary), 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.chat-header h2 {
+  font-size: 1.1rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chapter-badge {
+  background: hsla(var(--accent-primary), 0.2);
+  color: hsl(var(--accent-primary));
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.messages-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Messages ── */
+.message-wrapper {
+  display: flex;
+  max-width: 80%;
+  gap: 16px;
+}
+
+.message-user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-assistant {
+  align-self: flex-start;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: hsl(var(--bg-tertiary));
+  color: hsl(var(--text-primary));
+  flex-shrink: 0;
+}
+
+.avatar.ai-avatar {
+  background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+  color: white;
+}
+
+.message-bubble {
+  padding: 16px 20px;
+  border-radius: var(--radius-lg);
+  position: relative;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.message-user .message-bubble {
+  background-color: hsl(var(--bg-tertiary));
+  border-top-right-radius: 4px;
+}
+
+.message-assistant .message-bubble {
+  background-color: hsla(var(--accent-primary), 0.1);
+  border: 1px solid hsla(var(--accent-primary), 0.2);
+  border-top-left-radius: 4px;
+}
+
+/* ── Markdown ── */
+.markdown-content p {
+  margin-bottom: 12px;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content pre {
+  background: hsl(var(--bg-primary)) !important;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  overflow-x: auto;
+  border: 1px solid hsla(var(--text-primary), 0.1);
+}
+
+.markdown-content code {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.85em;
+  background: hsla(var(--bg-primary), 0.5);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.markdown-content h2, .markdown-content h3 {
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.markdown-content ul, .markdown-content ol {
+  padding-left: 20px;
+  margin-bottom: 8px;
+}
+
+.markdown-content li {
+  margin-bottom: 4px;
+}
+
+/* ── Input ── */
+.chat-input-container {
+  padding: 20px;
+  background: hsla(var(--bg-secondary), 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid hsla(var(--text-primary), 0.05);
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.input-wrapper {
+  max-width: 800px;
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  background-color: hsl(var(--bg-tertiary));
+  border: 1px solid hsla(var(--accent-primary), 0.3);
+  border-radius: var(--radius-lg);
+  padding: 8px;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.input-wrapper:focus-within {
+  border-color: hsl(var(--accent-primary));
+  box-shadow: 0 0 0 2px hsla(var(--accent-primary), 0.2), var(--shadow-md);
+}
+
+.chat-textarea::placeholder {
+  color: hsla(var(--text-primary), 0.4);
+}
+
+.chat-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: hsl(var(--text-primary));
+  padding: 12px;
+  resize: none;
+  min-height: 48px;
+  max-height: 200px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.chat-textarea:focus {
+  outline: none;
+}
+
+.send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 4px;
+  flex-shrink: 0;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.send-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.send-btn:disabled {
+  background: hsl(var(--bg-tertiary));
+  color: hsl(var(--text-muted));
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Canvas Toggle Button ── */
+.canvas-toggle-btn {
+  background: hsla(var(--accent-primary), 0.15);
+  border: 1px solid hsla(var(--accent-primary), 0.3);
+  color: hsl(var(--accent-primary));
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-fast);
+}
+
+.canvas-toggle-btn:hover {
+  background: hsla(var(--accent-primary), 0.25);
+}
+
+/* ── Mode Toggle ── */
+.mode-toggle {
+  display: flex;
+  background: hsl(var(--bg-tertiary));
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.mode-btn {
+  background: transparent;
+  color: hsl(var(--text-secondary));
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.mode-btn.active-teacher {
+  background: hsla(var(--accent-primary), 0.2);
+  color: hsl(var(--accent-primary));
+}
+
+.mode-btn.active-quiz {
+  background: hsla(var(--accent-secondary), 0.2);
+  color: hsl(var(--accent-secondary));
+}
+
+/* ── Streaming Cursor ── */
+.streaming-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: hsl(var(--accent-primary));
+  animation: blink 1s step-end infinite;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.init-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 200px;
+  color: hsl(var(--text-muted));
+  margin: auto;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ── Responsive Mobile ── */
+@media (max-width: 768px) {
+  .curriculum-layout {
+    flex-direction: column;
+  }
+  .resizer-handle {
+    display: none;
+  }
+  .chat-container {
+    flex: 1;
+    min-height: 40vh;
+  }
+  .canvas-wrapper {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-height: 50vh;
+    border-top: 1px solid hsla(var(--text-primary), 0.1);
+  }
+  .message-wrapper {
+    max-width: 95%;
+  }
+  .chat-header h2 {
+    font-size: 0.95rem;
+  }
+}
+
+/* ── Error Banner ── */
+.chat-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin: 12px 16px 0;
+  background: hsla(0, 70%, 55%, 0.12);
+  border: 1px solid hsla(0, 70%, 55%, 0.3);
+  border-radius: var(--radius-md);
+  color: hsl(0, 85%, 65%);
+  font-size: 0.875rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.chat-error-banner svg {
+  flex-shrink: 0;
+}
+
+.chat-error-dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: hsl(0, 85%, 65%);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 4px;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.chat-error-dismiss:hover {
+  opacity: 1;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Chapter Completion Banner ── */
+.chapter-complete-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  margin: 16px;
+  background: linear-gradient(135deg, hsla(145, 65%, 45%, 0.12), hsla(180, 60%, 45%, 0.08));
+  border: 1px solid hsla(145, 65%, 45%, 0.3);
+  border-radius: var(--radius-lg);
+  animation: slideUp 0.5s ease;
+}
+
+.chapter-complete-icon {
+  color: hsl(145, 65%, 45%);
+  flex-shrink: 0;
+}
+
+.chapter-complete-banner h3 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  color: hsl(145, 65%, 50%);
+}
+
+.chapter-complete-banner p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: hsl(var(--text-secondary));
+}
+
+
+.quiz-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: hsla(var(--primary), 0.05);
+  border: 1px dashed hsla(var(--primary), 0.2);
+  border-radius: var(--radius-lg);
+  color: hsl(var(--primary));
+  font-size: 0.9rem;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

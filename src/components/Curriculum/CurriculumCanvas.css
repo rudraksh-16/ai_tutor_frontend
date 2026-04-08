@@ -1,0 +1,188 @@
+/* ── Curriculum Canvas Panel (Right Side) ── */
+
+.canvas-panel {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid hsla(var(--text-primary), 0.08);
+  background: hsl(var(--bg-secondary));
+  animation: canvasPanelSlideIn 0.35s ease forwards;
+}
+
+@keyframes canvasPanelSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Panel Header ── */
+.canvas-panel-header {
+  height: var(--header-height);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid hsla(var(--text-primary), 0.06);
+  flex-shrink: 0;
+}
+
+.canvas-panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.canvas-panel-title-row h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: hsl(var(--text-primary));
+}
+
+.canvas-panel-icon {
+  color: hsl(var(--accent-primary));
+}
+
+.canvas-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: hsl(var(--text-muted));
+  padding: 6px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.canvas-close-btn:hover {
+  color: hsl(var(--text-primary));
+  background: hsla(var(--text-primary), 0.08);
+}
+
+/* ── Panel Body ── */
+.canvas-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.canvas-topic-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.4;
+}
+
+/* ── Chapter List ── */
+.canvas-chapter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.canvas-chapter-card {
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  background: hsla(var(--bg-tertiary), 0.5);
+  border: 1px solid hsla(var(--text-primary), 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all var(--transition-fast);
+  animation: canvasCardFadeIn 0.4s ease forwards;
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.canvas-chapter-card:hover {
+  border-color: hsla(var(--accent-primary), 0.3);
+  background: hsla(var(--bg-tertiary), 0.8);
+}
+
+@keyframes canvasCardFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Card Header ── */
+.canvas-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.canvas-chapter-num {
+  min-width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.canvas-chapter-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: hsl(var(--text-primary));
+  line-height: 1.4;
+}
+
+/* ── Outline List ── */
+.canvas-outline-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 38px;
+}
+
+.canvas-outline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: hsl(var(--text-secondary));
+  line-height: 1.5;
+}
+
+.canvas-item-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: hsl(var(--accent-primary));
+  flex-shrink: 0;
+  margin-top: 6px;
+  opacity: 0.5;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .canvas-panel {
+    width: 100%;
+    min-width: 100%;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 30;
+  }
+}
