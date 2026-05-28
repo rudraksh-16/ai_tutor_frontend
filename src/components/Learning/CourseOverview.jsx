@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   BookOpen, Code, Database, Globe, Gauge, TestTube2,
   Layers, Shield, Sparkles, Terminal, Lock, Loader2,
@@ -67,6 +67,13 @@ export const CourseOverview = ({
 }) => {
   const [expandedId, setExpandedId] = useState(null);
   const [generatingIds, setGeneratingIds] = useState(new Set());
+  const pollIntervalsRef = useRef(new Set());
+
+  useEffect(() => {
+    return () => {
+      pollIntervalsRef.current.forEach(clearInterval);
+    };
+  }, []);
 
   // Determine the "next sequential" chapter that can be generated
   const nextGeneratableId = (() => {
@@ -101,6 +108,7 @@ export const CourseOverview = ({
       count++;
       if (count > 40) {
         clearInterval(interval);
+        pollIntervalsRef.current.delete(interval);
         setGeneratingIds(prev => {
           const next = new Set(prev);
           next.delete(chapterId);
@@ -113,6 +121,7 @@ export const CourseOverview = ({
         const state = (ch.status || '').toLowerCase();
         if (state === 'in_progress' || state === 'completed') {
           clearInterval(interval);
+          pollIntervalsRef.current.delete(interval);
           setGeneratingIds(prev => {
             const next = new Set(prev);
             next.delete(chapterId);
@@ -124,6 +133,7 @@ export const CourseOverview = ({
         // keep polling
       }
     }, 3000);
+    pollIntervalsRef.current.add(interval);
   };
 
   const toggleExpand = (id) => {

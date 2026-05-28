@@ -12,23 +12,26 @@ export const InlineQuiz = ({ sectionId, onPass }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadQuiz();
+    const controller = new AbortController();
+    loadQuiz(controller.signal);
+    return () => controller.abort();
   }, [sectionId]);
 
-  const loadQuiz = async () => {
+  const loadQuiz = async (signal) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiService.getSectionQuiz(sectionId);
+      const data = await apiService.getSectionQuiz(sectionId, signal);
       setQuestions(data);
     } catch (err) {
+      if (err.code === 'ERR_CANCELED') return;
       if (err.response?.status === 404) {
-        setQuestions([]); // No quiz yet
+        setQuestions([]);
       } else {
         setError('Could not load quiz questions.');
       }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 

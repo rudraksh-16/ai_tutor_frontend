@@ -97,12 +97,18 @@ export const ReadingMode = ({ chapterId, chapterTitle, forceViewIndex, onSwitchT
 
   const firstIncompleteIdx = sections.findIndex(s => !s.is_completed);
   const activeSectionIndex = firstIncompleteIdx === -1 ? sections.length : firstIncompleteIdx;
-  
-  const [viewIndex, setViewIndex] = useState(0);
 
-  // Automatically advance to the newly unlocked section when progressing
+  const [viewIndex, setViewIndex] = useState(0);
+  const hasMountedRef = useRef(false);
+
   useEffect(() => {
-    setViewIndex(activeSectionIndex);
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      setViewIndex(activeSectionIndex);
+      return;
+    }
+    // Only auto-advance if user is currently on the section that just got completed
+    setViewIndex(prev => (prev === activeSectionIndex - 1 ? activeSectionIndex : prev));
   }, [activeSectionIndex]);
 
   // Respond to sidebar clicks
