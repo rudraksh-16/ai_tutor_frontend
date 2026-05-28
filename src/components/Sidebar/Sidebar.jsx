@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   BookOpen, Plus, Activity, CheckCircle, Clock, LogOut,
   Home, PanelLeftClose, PanelLeftOpen, MessageSquare,
-  GraduationCap, ChevronRight, Sun, Moon, User
+  GraduationCap, ChevronRight, Sun, Moon
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { authService } from '../../services/auth';
@@ -21,7 +21,9 @@ export const Sidebar = ({ refreshKey, onLogout }) => {
   const { theme, toggleTheme } = useTheme();
   const [inProgress, setInProgress] = useState([]);
   const [completed, setCompleted] = useState([]);
+  const [planningCompleteMap, setPlanningCompleteMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnceRef = useRef(false);
   const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
   const [curriculumOpen, setCurriculumOpen] = useState(true);
   const [learningOpen, setLearningOpen] = useState(true);
@@ -42,29 +44,49 @@ export const Sidebar = ({ refreshKey, onLogout }) => {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchSidebar = async () => {
+      const showLoadingState = !hasLoadedOnceRef.current;
       try {
-        setLoading(true);
-        const data = await apiService.getSidebar();
-        setInProgress(data.in_progress || []);
+        if (showLoadingState) setLoading(true);
+
+        const data = await apiService.getSidebar(controller.signal);
+        const inProgressTopics = data.in_progress || [];
+
+        const planningEntries = await Promise.all(
+          inProgressTopics.map(async (topic) => {
+            try {
+              const status = await apiService.getPlanningStatus(topic.id, controller.signal);
+              return [topic.id, Boolean(status.planning_complete)];
+            } catch {
+              return [topic.id, false];
+            }
+          })
+        );
+
+        if (controller.signal.aborted) return;
+
+        setInProgress(inProgressTopics);
         setCompleted(data.completed || []);
+        setPlanningCompleteMap(Object.fromEntries(planningEntries));
       } catch (err) {
-        console.error('Failed to load sidebar', err);
+        if (err.code !== 'ERR_CANCELED') console.error('Failed to load sidebar', err);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          hasLoadedOnceRef.current = true;
+        }
       }
     };
+
     fetchSidebar();
+    return () => controller.abort();
   }, [refreshKey]);
 
-  // Split in_progress into topics that are still in curriculum vs ready to learn
-  // pending = still negotiating curriculum, in_progress = has chapters, ready to learn
-  const curriculumTopics = inProgress.filter(t => 
-    t.status === 'pending'
-  );
-  const learningTopics = inProgress.filter(t => 
-    t.status === 'in_progress'
-  );
+  // A topic should appear under Learning only after planning is complete.
+  const curriculumTopics = inProgress.filter((topic) => !planningCompleteMap[topic.id]);
+  const learningTopics = inProgress.filter((topic) => Boolean(planningCompleteMap[topic.id]));
 
   return (
     <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
@@ -225,4 +247,3 @@ export const Sidebar = ({ refreshKey, onLogout }) => {
     </div>
   );
 };
-
