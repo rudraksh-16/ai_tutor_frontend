@@ -1,7 +1,14 @@
 import axios from 'axios';
 import { authService } from './auth';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const inFlightGetRequests = new Map();
+
+const getWebSocketBaseUrl = () => {
+  const apiUrl = new URL(API_BASE_URL);
+  apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+  return apiUrl;
+};
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -32,6 +39,23 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+const getWithInFlightDedupe = (key, request) => {
+  const scopedKey = `${authService.getCurrentUserId() || 'anon'}:${key}`;
+
+  if (inFlightGetRequests.has(scopedKey)) {
+    return inFlightGetRequests.get(scopedKey);
+  }
+
+  const promise = request()
+    .then((response) => response.data)
+    .finally(() => {
+      inFlightGetRequests.delete(scopedKey);
+    });
+
+  inFlightGetRequests.set(scopedKey, promise);
+  return promise;
+};
+
 // Auto-refresh token on 401
 apiClient.interceptors.response.use(
   (response) => response,
@@ -58,13 +82,13 @@ apiClient.interceptors.response.use(
         processQueue(null, newAccessToken);
         originalRequest.headers['Authorization'] = 'Bearer ' + newAccessToken;
         return apiClient(originalRequest);
-      } catch (err) {
-        processQueue(err, null);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
         authService.clearSession();
         if (window.location.pathname !== '/auth') {
           window.location.href = '/auth';
         }
-        return Promise.reject(err);
+        return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
@@ -75,9 +99,12 @@ apiClient.interceptors.response.use(
 
 export const apiService = {
   // ─── Sidebar ────────────────────────────────────────────
-  getSidebar: async () => {
-    const response = await apiClient.get('/sidebar/');
-    return response.data;
+  getSidebar: async (signal) => {
+    if (signal) {
+      const response = await apiClient.get('/sidebar/', { signal });
+      return response.data;
+    }
+    return getWithInFlightDedupe('GET /sidebar/', () => apiClient.get('/sidebar/'));
   },
 
   // ─── Topics ─────────────────────────────────────────────
@@ -89,30 +116,48 @@ export const apiService = {
     return response.data;
   },
 
-  getTopic: async (topicId) => {
-    const response = await apiClient.get(`/topics/${topicId}`);
+  getTopic: async (topicId, signal) => {
+    const response = await apiClient.get(`/topics/${topicId}`, { signal });
     return response.data;
   },
 
-  getTopicChapters: async (topicId) => {
-    const response = await apiClient.get(`/topics/${topicId}/chapters`);
+  getTopicChapters: async (topicId, signal) => {
+    const response = await apiClient.get(`/topics/${topicId}/chapters`, { signal });
     return response.data;
   },
 
   // Returns { topic_status, total_chapters, planned_chapters, planning_complete }
-  getPlanningStatus: async (topicId) => {
-    const response = await apiClient.get(`/topics/${topicId}/status`);
-    return response.data;
+  getPlanningStatus: async (topicId, signal) => {
+    if (signal) {
+      const response = await apiClient.get(`/topics/${topicId}/status`, { signal });
+      return response.data;
+    }
+    return getWithInFlightDedupe(
+      `GET /topics/${topicId}/status`,
+      () => apiClient.get(`/topics/${topicId}/status`)
+    );
   },
 
   // ─── Chapters ───────────────────────────────────────────
-  getChapter: async (chapterId) => {
-    const response = await apiClient.get(`/chapters/${chapterId}`);
+  getChapter: async (chapterId, signal) => {
+    const response = await apiClient.get(`/chapters/${chapterId}`, { signal });
     return response.data;
   },
 
   completeChapter: async (chapterId) => {
     const response = await apiClient.post(`/chapters/${chapterId}/complete`);
+    return response.data;
+  },
+
+  getChapterQuizState: async (chapterId, quizKey) => {
+    const response = await apiClient.get(`/chapters/${chapterId}/quiz-state`, {
+      params: { quiz_key: quizKey },
+    });
+    return response.data;
+  },
+
+  saveChapterQuizState: async (chapterId, payload) => {
+    const response = await apiClient.put(`/chapters/${chapterId}/quiz-state`, payload);
     return response.data;
   },
 
@@ -123,14 +168,15 @@ export const apiService = {
   },
 
   // ─── Conversation History ──────────────────────────────
-  getCurriculumMessages: async (topicId) => {
-    const response = await apiClient.get(`/conversations/topic/${topicId}/messages`);
+  getCurriculumMessages: async (topicId, signal) => {
+    const response = await apiClient.get(`/conversations/topic/${topicId}/messages`, { signal });
     return response.data;
   },
 
-  getChapterMessages: async (chapterId, type) => {
+  getChapterMessages: async (chapterId, type, signal) => {
     const response = await apiClient.get(`/conversations/chapter/${chapterId}/messages`, {
-      params: { type }
+      params: { type },
+      signal,
     });
     return response.data;
   },
@@ -169,8 +215,8 @@ export const apiService = {
   },
 
   // ─── Section Quizzes ────────────────────────────────────
-  getSectionQuiz: async (sectionId) => {
-    const response = await apiClient.get(`/quiz/section/${sectionId}`);
+  getSectionQuiz: async (sectionId, signal) => {
+    const response = await apiClient.get(`/quiz/section/${sectionId}`, { signal });
     return response.data;
   },
 
@@ -204,6 +250,7 @@ const streamGenericChat = async (
   onError,
   eventHandlers = {}
 ) => {
+  let reader;
   try {
     const headers = {
       'Content-Type': 'application/json',
@@ -240,10 +287,12 @@ const streamGenericChat = async (
     }
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const httpErr = new Error(`HTTP error! status: ${response.status}`);
+      httpErr.httpStatus = response.status;
+      throw httpErr;
     }
 
-    const reader = response.body?.getReader();
+    reader = response.body?.getReader();
     const decoder = new TextDecoder('utf-8');
 
     if (!reader) {
@@ -274,7 +323,9 @@ const streamGenericChat = async (
                 }
 
                 if (parsed.error) {
-                  onError(parsed.error);
+                  reader.cancel();
+                  onError("We're having trouble on our end. Please try again in a moment.");
+                  return;
                 } else if (parsed.content) {
                   onMessageUpdate(parsed.content);
                 }
@@ -289,7 +340,19 @@ const streamGenericChat = async (
     
     onDone();
   } catch (err) {
-    onError(err.message || 'Unknown stream error');
+    reader?.cancel();
+    const isNetworkError = !navigator.onLine ||
+      (err instanceof TypeError && (
+        err.message.includes('Failed to fetch') ||
+        err.message.includes('NetworkError') ||
+        err.message.includes('Load failed')
+      ));
+    const isServerError = err.httpStatus >= 500;
+    onError(
+      isNetworkError ? 'No internet connection. Please check your connection and try again.'
+      : isServerError ? "We're having trouble on our end. Please try again in a moment."
+      : (err.message || 'Unknown stream error')
+    );
   }
 };
 
@@ -298,14 +361,18 @@ export const streamCurriculumChat = (
   onMessageUpdate,
   onDone,
   onError,
-  onPlanningStarted
+  onPlanningStarted,
+  onResumeSnapshot
 ) => streamGenericChat(
   '/chat/curriculum',
   request,
   onMessageUpdate,
   onDone,
   onError,
-  { planning_started: onPlanningStarted }
+  {
+    planning_started: onPlanningStarted,
+    resume_snapshot: onResumeSnapshot,
+  }
 );
 
 export const streamTeacherChat = (
@@ -313,14 +380,18 @@ export const streamTeacherChat = (
   onMessageUpdate,
   onDone,
   onError,
-  onQuizReady
+  onQuizReady,
+  onResumeSnapshot
 ) => streamGenericChat(
   '/chat/teacher',
   request,
   onMessageUpdate,
   onDone,
   onError,
-  { quiz_ready: onQuizReady }
+  {
+    quiz_ready: onQuizReady,
+    resume_snapshot: onResumeSnapshot,
+  }
 );
 
 export const streamQuizChat = (
@@ -328,12 +399,51 @@ export const streamQuizChat = (
   onMessageUpdate,
   onDone,
   onError,
-  onQuizPassed
+  onQuizPassed,
+  onResumeSnapshot
 ) => streamGenericChat(
   '/chat/quiz',
   request,
   onMessageUpdate,
   onDone,
   onError,
-  { quiz_passed: onQuizPassed }
+  {
+    quiz_passed: onQuizPassed,
+    resume_snapshot: onResumeSnapshot,
+  }
 );
+
+export const openPlanningStatusSocket = (topicId, { onStatus, onOpen, onError, onClose } = {}) => {
+  try {
+    const wsUrl = getWebSocketBaseUrl();
+    wsUrl.pathname = `${wsUrl.pathname.replace(/\/$/, '')}/topics/${topicId}/status/ws`;
+
+    const socket = new WebSocket(wsUrl.toString());
+
+    socket.onopen = () => {
+      onOpen?.();
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        onStatus?.(parsed);
+      } catch (error) {
+        console.error('Failed to parse planner WebSocket payload:', error);
+      }
+    };
+
+    socket.onerror = (event) => {
+      onError?.(event);
+    };
+
+    socket.onclose = (event) => {
+      onClose?.(event);
+    };
+
+    return socket;
+  } catch (error) {
+    onError?.(error);
+    return null;
+  }
+};
