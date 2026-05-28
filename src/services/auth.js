@@ -1,6 +1,84 @@
 // Auth service — no imports from api.js to avoid circular deps
 
-const AUTH_BASE_URL = 'http://localhost:8000/api/auth';
+const AUTH_BASE_URL = import.meta.env.VITE_AUTH_BASE_URL;
+
+const formatValidationPath = (loc = []) => {
+  const field = loc[loc.length - 1];
+
+  if (!field || field === '__root__') {
+    return '';
+  }
+
+  return `${field.charAt(0).toUpperCase()}${field.slice(1)}: `;
+};
+
+const toSentenceCase = (value) => {
+  if (!value) {
+    return '';
+  }
+
+  return value.charAt(0).toUpperCase() + value.slice(1);
+};
+
+const normalizeGenericMessage = (message = '') => {
+  return message.replace(/^Value error,\s*/i, '').trim();
+};
+
+const formatValidationMessage = (item) => {
+  if (!item) {
+    return null;
+  }
+
+  if (typeof item === 'string') {
+    return item;
+  }
+
+  const field = item.loc?.[item.loc.length - 1];
+  const rawMessage = typeof item.msg === 'string' ? item.msg : '';
+  const normalizedMessage = normalizeGenericMessage(rawMessage);
+
+  if (field === 'email') {
+    return 'Please enter a valid email address.';
+  }
+
+  if (field === 'password') {
+    return 'Password must be at least 6 characters and include uppercase, lowercase, a number, and a special character.';
+  }
+
+  if (field === 'name' && normalizedMessage) {
+    return `Name: ${toSentenceCase(normalizedMessage)}`;
+  }
+
+  if (normalizedMessage) {
+    return `${formatValidationPath(item.loc)}${toSentenceCase(normalizedMessage)}`;
+  }
+
+  return null;
+};
+
+const createAuthError = (detail, fallbackMessage) => {
+  const messages = [];
+
+  if (Array.isArray(detail)) {
+    messages.push(...detail.map(formatValidationMessage).filter(Boolean));
+  }
+
+  if (messages.length === 0 && typeof detail === 'string' && detail.trim()) {
+    messages.push(detail.trim());
+  }
+
+  if (messages.length === 0 && detail && typeof detail === 'object' && typeof detail.msg === 'string') {
+    messages.push(detail.msg);
+  }
+
+  if (messages.length === 0) {
+    messages.push(fallbackMessage);
+  }
+
+  const error = new Error(messages[0]);
+  error.messages = messages;
+  return error;
+};
 
 export const authService = {
   getToken: () => {
@@ -44,18 +122,21 @@ export const authService = {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      throw new Error(err.detail || 'Login failed');
+      throw createAuthError(err.detail, 'Login failed');
     }
 
     const data = await response.json();
-    
+
+    if (!data.access_token) {
+      throw createAuthError(null, 'Invalid login response from server');
+    }
     authService.setToken(data.access_token);
     if (data.refresh_token) {
       authService.setRefreshToken(data.refresh_token);
     }
-    localStorage.setItem('ai_tutor_user_id', data.user_id);
-    localStorage.setItem('ai_tutor_name', data.name);
-    
+    if (data.user_id) localStorage.setItem('ai_tutor_user_id', data.user_id);
+    if (data.name) localStorage.setItem('ai_tutor_name', data.name);
+
     return data;
   },
 
@@ -68,7 +149,7 @@ export const authService = {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      throw new Error(err.detail || 'Registration failed');
+      throw createAuthError(err.detail, 'Registration failed');
     }
 
     return await response.json();
@@ -102,7 +183,7 @@ export const authService = {
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       authService.clearSession();
-      throw new Error(err.detail || 'Token refresh failed');
+      throw createAuthError(err.detail, 'Token refresh failed');
     }
 
     const data = await response.json();
