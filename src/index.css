@@ -1,0 +1,177 @@
+:root, [data-theme="dark"] {
+  /* Dark Theme Palette (Calm Slate) */
+  --bg-primary: 224 27% 9%;
+  --bg-secondary: 222 24% 13%;
+  --bg-tertiary: 222 21% 18%;
+  
+  --text-primary: 220 18% 92%;
+  --text-secondary: 220 12% 70%;
+  --text-muted: 220 10% 55%;
+  
+  --accent-primary: 249 44% 58%;
+  --accent-secondary: 198 42% 50%;
+  
+  --border-color: 222 18% 25%;
+  --success: 148 52% 45%;
+  --error: 2 62% 56%;
+  --warning: 38 78% 56%;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  /* Layout basics */
+  --sidebar-width: 280px;
+  --header-height: 60px;
+  
+  /* Utilities */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.4s ease;
+}
+
+[data-theme="light"] {
+  --bg-primary: 220 18% 91%;
+  --bg-secondary: 218 16% 87%;
+  --bg-tertiary: 216 13% 82%;
+
+  --text-primary: 224 22% 16%;
+  --text-secondary: 222 14% 38%;
+  --text-muted: 222 12% 52%;
+
+  --accent-primary: 246 48% 54%;
+  --accent-secondary: 196 46% 44%;
+
+  --border-color: 220 18% 82%;
+  --success: 148 48% 38%;
+  --error: 2 58% 48%;
+  --warning: 38 72% 46%;
+
+  --shadow-sm: 0 8px 22px rgba(71, 85, 105, 0.08);
+  --shadow-md: 0 18px 44px rgba(71, 85, 105, 0.12);
+  --shadow-lg: 0 26px 64px rgba(71, 85, 105, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: hsl(var(--bg-primary));
+  color: hsl(var(--text-primary));
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+[data-theme="light"] body {
+  background-image:
+    radial-gradient(circle at top left, hsla(var(--accent-primary), 0.08), transparent 28%),
+    radial-gradient(circle at top right, hsla(var(--accent-secondary), 0.08), transparent 24%),
+    linear-gradient(180deg, hsla(var(--bg-primary), 1), hsla(var(--bg-secondary), 0.82));
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: hsla(var(--bg-secondary), 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsla(var(--text-primary), 0.1);
+}
+
+[data-theme="light"] .glass {
+  background: linear-gradient(180deg, hsla(0, 0%, 100%, 0.82), hsla(var(--bg-secondary), 0.92));
+  border: 1px solid hsla(var(--text-primary), 0.07);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--bg-tertiary));
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--text-muted));
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+.app-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Typography utilities */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: hsl(var(--text-primary));
+}
+
+.text-gradient {
+  background: linear-gradient(120deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Theme Toggle ── */
+.theme-toggle {
+  width: 34px;
+  height: 34px;
+  background: hsla(var(--bg-primary), 0.55);
+  border: 1px solid hsla(var(--text-primary), 0.12);
+  cursor: pointer;
+  color: hsl(var(--text-secondary));
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.theme-toggle:hover {
+  color: hsl(var(--text-primary));
+  background: hsla(var(--text-primary), 0.08);
+  border-color: hsla(var(--accent-primary), 0.28);
+}
+
+.theme-toggle:active {
+  transform: translateY(1px);
+}
+
+.theme-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsla(var(--accent-primary), 0.22);
+}
+
+[data-theme="light"] .theme-toggle {
+  background: linear-gradient(180deg, hsla(0, 0%, 100%, 0.92), hsla(var(--bg-secondary), 0.96));
+  border-color: hsla(var(--text-primary), 0.1);
+  box-shadow: 0 8px 18px rgba(71, 85, 105, 0.08);
+}
