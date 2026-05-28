@@ -219,6 +219,29 @@
   cursor: not-allowed;
 }
 
+.quiz-secondary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid hsla(var(--text-primary), 0.12);
+  background: hsla(var(--bg-primary), 0.55);
+  color: hsl(var(--text-primary));
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.quiz-secondary-btn:hover {
+  background: hsla(var(--accent-primary), 0.08);
+  border-color: hsla(var(--accent-primary), 0.3);
+}
+
 /* ── Result Banner ── */
 .quiz-result-banner {
   margin-top: 24px;

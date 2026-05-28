@@ -1,13 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { CheckCircle2, XCircle, Award, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { CheckCircle2, XCircle, Award, ChevronDown, ChevronUp, Loader2, RotateCcw } from 'lucide-react';
 import { apiService } from '../../services/api';
 import './QuizCard.css';
 
-/**
- * Try to parse quiz JSON from an assistant message.
- * The quiz agent returns JSON like:
- * { "1": { "Question": "...", "options": "A)... B)...", "correct_answer": "B", "explanation": "..." } }
- */
+const PASS_THRESHOLD = 0.7;
+
 export const parseQuizJSON = (content) => {
   if (!content) return null;
 
@@ -15,54 +12,56 @@ export const parseQuizJSON = (content) => {
   let match;
   while ((match = codeBlockRegex.exec(content)) !== null) {
     try {
-      const jsonStr = match[1].strip ? match[1].strip() : match[1].trim();
+      const jsonStr = match[1].trim();
       const parsed = JSON.parse(jsonStr);
-      
-      // Handle the new structured format: { section_id, quiz }
-      if (parsed.section_id && parsed.quiz) {
-         const quizBody = typeof parsed.quiz === 'string' ? JSON.parse(parsed.quiz) : parsed.quiz;
-         return { ...quizBody, section_id: parsed.section_id };
-      }
-
       if (isValidQuiz(parsed)) return parsed;
-    } catch (e) {
-      // Continue
+    } catch {
+      // Continue parsing other code blocks.
     }
   }
 
-  // Fallback for raw JSON without code blocks
   const jsonRegex = /\{[\s\S]*?"(?:Question|question)"[\s\S]*?\}/gi;
   const jsonMatches = content.match(jsonRegex);
   if (jsonMatches) {
-    for (const m of jsonMatches) {
+    for (const candidate of jsonMatches) {
       try {
-        const parsed = JSON.parse(m.trim());
+        const parsed = JSON.parse(candidate.trim());
         if (isValidQuiz(parsed)) return parsed;
-      } catch (e) {}
+      } catch {
+        // Ignore invalid candidates.
+      }
     }
   }
 
   return null;
 };
 
-const isValidQuiz = (obj) => {
-  if (!obj || typeof obj !== 'object') return false;
-  const keys = Object.keys(obj);
-  if (keys.length === 0) return false;
-  const firstEntry = obj[keys[0]];
-  return !!(firstEntry && (firstEntry.Question || firstEntry.question));
+const isValidQuiz = (value) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const keys = Object.keys(value);
+  if (!keys.length) return false;
+  const firstEntry = value[keys[0]];
+  return Boolean(firstEntry && (firstEntry.Question || firstEntry.question));
 };
 
-const parseOptions = (optionsStr) => {
-  if (!optionsStr) return [];
-  if (Array.isArray(optionsStr)) return optionsStr;
-  const parts = optionsStr.split(/(?=[A-D]\))/g).filter(Boolean);
-  return parts.map(p => p.trim());
+const parseOptions = (optionsValue) => {
+  if (!optionsValue) return [];
+  if (Array.isArray(optionsValue)) return optionsValue;
+  return optionsValue.split(/(?=[A-D]\))/g).filter(Boolean).map((part) => part.trim());
 };
 
 const getOptionLetter = (option) => {
   const match = option.match(/^([A-D])\)/);
   return match ? match[1] : '';
+};
+
+const hashString = (value) => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return `quiz_${Math.abs(hash)}`;
 };
 
 export const QuizCard = ({ quizData, chapterId, onQuizComplete }) => {
@@ -71,23 +70,116 @@ export const QuizCard = ({ quizData, chapterId, onQuizComplete }) => {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [expandedExplanations, setExpandedExplanations] = useState({});
+  const [isHydrating, setIsHydrating] = useState(true);
+
+  const hydratedRef = useRef(false);
+  const persistTimerRef = useRef(null);
 
   const questions = useMemo(() => {
     const keys = Object.keys(quizData).sort((a, b) => Number(a) - Number(b));
-    return keys.map((key, idx) => {
-      const q = quizData[key];
+    return keys.map((key, index) => {
+      const question = quizData[key];
       return {
         id: key,
-        number: idx + 1,
-        question: q.Question || q.question,
-        options: parseOptions(q.options),
+        number: index + 1,
+        question: question.Question || question.question,
+        options: parseOptions(question.options),
+        correctAnswer: (question.correct_answer || '').trim().toUpperCase(),
+        explanation: question.explanation || '',
       };
     });
   }, [quizData]);
 
+  const quizKey = useMemo(
+    () => hashString(JSON.stringify(quizData)),
+    [quizData]
+  );
+
+  const feedbackMap = useMemo(() => {
+    if (!result?.feedback) return {};
+    const map = {};
+    result.feedback.forEach((item) => {
+      map[item.question_id] = item;
+    });
+    return map;
+  }, [result]);
+
+  useEffect(() => {
+    let active = true;
+    hydratedRef.current = false;
+    setIsHydrating(true);
+    setSelectedAnswers({});
+    setSubmitted(false);
+    setResult(null);
+    setExpandedExplanations({});
+
+    const hydrateState = async () => {
+      try {
+        const savedState = await apiService.getChapterQuizState(chapterId, quizKey);
+        if (!active || !savedState) {
+          return;
+        }
+
+        setSelectedAnswers(savedState.selected_answers || {});
+        setSubmitted(Boolean(savedState.submitted));
+        if (savedState.submitted) {
+          const restoredScore = savedState.score ?? 0;
+          const restoredTotal = savedState.total ?? questions.length;
+          setResult({
+            score: restoredScore,
+            total: restoredTotal,
+            passed: restoredTotal > 0 ? restoredScore / restoredTotal >= PASS_THRESHOLD : false,
+            feedback: savedState.feedback || [],
+          });
+        }
+      } catch (err) {
+        if (!active) return;
+        console.error('Failed to hydrate quiz state:', err);
+      } finally {
+        if (!active) return;
+        hydratedRef.current = true;
+        setIsHydrating(false);
+      }
+    };
+
+    hydrateState();
+
+    return () => {
+      active = false;
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+      }
+    };
+  }, [chapterId, quizKey, questions.length]);
+
+  useEffect(() => {
+    if (!hydratedRef.current || submitted) return undefined;
+
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+    }
+
+    persistTimerRef.current = setTimeout(() => {
+      apiService.saveChapterQuizState(chapterId, {
+        quiz_key: quizKey,
+        selected_answers: selectedAnswers,
+        submitted: false,
+        feedback: [],
+      }).catch((err) => {
+        console.error('Failed to persist quiz draft:', err);
+      });
+    }, 250);
+
+    return () => {
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+      }
+    };
+  }, [chapterId, quizKey, selectedAnswers, submitted]);
+
   const handleSelect = (questionId, optionLetter) => {
-    if (submitted) return;
-    setSelectedAnswers(prev => ({ ...prev, [questionId]: optionLetter }));
+    if (submitted || isHydrating) return;
+    setSelectedAnswers((prev) => ({ ...prev, [questionId]: optionLetter }));
   };
 
   const handleSubmit = async () => {
@@ -96,58 +188,86 @@ export const QuizCard = ({ quizData, chapterId, onQuizComplete }) => {
     setSubmitting(true);
 
     try {
-      // Build answers in the format: [{ question_id, selected_option }]
-      // Note: The backend expects actual QuizQuestion UUIDs, but since we parsed
-      // from LLM JSON (numbered keys), we need the backend quiz questions.
-      // For now, use the chapter-level submit which handles scoring.
-      const answers = questions.map(q => ({
-        question_id: q.id,
-        selected_option: selectedAnswers[q.id] || '',
-      }));
+      const feedback = questions.map((question) => {
+        const selectedOption = selectedAnswers[question.id] || '';
+        const isCorrect = selectedOption === question.correctAnswer;
+        return {
+          question_id: question.id,
+          selected_option: selectedOption,
+          correct_answer: question.correctAnswer,
+          explanation: question.explanation,
+          is_correct: isCorrect,
+        };
+      });
 
-      let response;
-      if (quizData.section_id) {
-        response = await apiService.submitSectionQuiz(quizData.section_id, answers);
-      } else {
-        response = await apiService.submitQuiz(chapterId, answers);
-      }
+      const nextResult = {
+        score: feedback.filter((item) => item.is_correct).length,
+        total: questions.length,
+        passed: questions.length > 0
+          ? feedback.filter((item) => item.is_correct).length / questions.length >= PASS_THRESHOLD
+          : false,
+        feedback,
+      };
 
-      setResult(response);
+      const persisted = await apiService.saveChapterQuizState(chapterId, {
+        quiz_key: quizKey,
+        selected_answers: selectedAnswers,
+        submitted: true,
+        score: nextResult.score,
+        total: nextResult.total,
+        passed: nextResult.passed,
+        feedback,
+      });
+
+      const finalResult = {
+        score: persisted?.score ?? nextResult.score,
+        total: persisted?.total ?? nextResult.total,
+        passed: (persisted?.total ?? nextResult.total) > 0
+          ? (persisted?.score ?? nextResult.score) / (persisted?.total ?? nextResult.total) >= PASS_THRESHOLD
+          : false,
+        feedback: persisted?.feedback?.length ? persisted.feedback : feedback,
+      };
+
+      setResult(finalResult);
       setSubmitted(true);
 
-      if (response.passed && onQuizComplete) {
-        onQuizComplete(response.score, response.total);
+      if (finalResult.passed) {
+        onQuizComplete?.(finalResult.score, finalResult.total);
       }
     } catch (err) {
       console.error('Quiz submission failed:', err);
-      // Fallback: mark submitted locally so user isn't stuck
-      setSubmitted(true);
-      if (onQuizComplete) {
-        onQuizComplete(0, questions.length);
-      }
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleRetake = async () => {
+    setSelectedAnswers({});
+    setSubmitted(false);
+    setSubmitting(false);
+    setResult(null);
+    setExpandedExplanations({});
+
+    try {
+      await apiService.saveChapterQuizState(chapterId, {
+        quiz_key: quizKey,
+        selected_answers: {},
+        submitted: false,
+        feedback: [],
+      });
+    } catch (err) {
+      console.error('Failed to reset quiz draft:', err);
+    }
+  };
+
   const toggleExplanation = (questionId) => {
-    setExpandedExplanations(prev => ({
+    setExpandedExplanations((prev) => ({
       ...prev,
       [questionId]: !prev[questionId],
     }));
   };
 
   const allAnswered = Object.keys(selectedAnswers).length >= questions.length;
-
-  // Build feedback map from backend result
-  const feedbackMap = useMemo(() => {
-    if (!result?.feedback) return {};
-    const map = {};
-    result.feedback.forEach(f => {
-      map[f.question_id] = f;
-    });
-    return map;
-  }, [result]);
 
   return (
     <div className="quiz-card-container">
@@ -157,25 +277,28 @@ export const QuizCard = ({ quizData, chapterId, onQuizComplete }) => {
         <span className="quiz-question-count">{questions.length} questions</span>
       </div>
 
+      <div className="quiz-threshold-note">
+        Pass threshold: 70%
+      </div>
+
       <div className="quiz-questions">
-        {questions.map((q) => {
-          const userAnswer = selectedAnswers[q.id] || '';
-          const feedback = feedbackMap[q.id];
+        {questions.map((question) => {
+          const userAnswer = selectedAnswers[question.id] || '';
+          const feedback = feedbackMap[question.id];
           const isCorrect = feedback?.is_correct;
-          const isWrong = feedback && !feedback.is_correct;
 
           return (
             <div
-              key={q.id}
+              key={question.id}
               className={`quiz-question ${submitted ? (isCorrect ? 'correct' : 'wrong') : ''}`}
             >
               <p className="quiz-question-text">
-                <span className="quiz-q-number">{q.number}.</span>
-                {q.question}
+                <span className="quiz-q-number">{question.number}.</span>
+                {question.question}
               </p>
 
               <div className="quiz-options">
-                {q.options.map((option) => {
+                {question.options.map((option) => {
                   const letter = getOptionLetter(option);
                   const isSelected = userAnswer === letter;
                   const isCorrectOption = submitted && feedback && letter === feedback.correct_answer;
@@ -185,8 +308,8 @@ export const QuizCard = ({ quizData, chapterId, onQuizComplete }) => {
                     <button
                       key={option}
                       className={`quiz-option ${isSelected && !submitted ? 'selected' : ''} ${isCorrectOption ? 'correct-option' : ''} ${isWrongSelected ? 'wrong-option' : ''}`}
-                      onClick={() => handleSelect(q.id, letter)}
-                      disabled={submitted}
+                      onClick={() => handleSelect(question.id, letter)}
+                      disabled={submitted || isHydrating}
                     >
                       <span className="quiz-option-letter">{letter}</span>
                       <span className="quiz-option-text">{option.replace(/^[A-D]\)\s*/, '')}</span>
@@ -201,12 +324,12 @@ export const QuizCard = ({ quizData, chapterId, onQuizComplete }) => {
                 <div className="quiz-explanation-wrapper">
                   <button
                     className="quiz-explanation-toggle"
-                    onClick={() => toggleExplanation(q.id)}
+                    onClick={() => toggleExplanation(question.id)}
                   >
-                    {expandedExplanations[q.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {expandedExplanations[question.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     <span>Explanation</span>
                   </button>
-                  {expandedExplanations[q.id] && (
+                  {expandedExplanations[question.id] && (
                     <p className="quiz-explanation">{feedback.explanation}</p>
                   )}
                 </div>
@@ -226,32 +349,37 @@ export const QuizCard = ({ quizData, chapterId, onQuizComplete }) => {
             {result.passed ? (
               <>
                 <h4>Chapter Complete! 🎉</h4>
-                <p>The next chapter is now unlocked in your sidebar.</p>
+                <p>You met the 70% pass threshold. Your attempt was saved and the next chapter is now unlocked.</p>
               </>
             ) : (
               <>
                 <h4>Keep practicing! 💪</h4>
-                <p>You need 80% to pass. Review the material and try again.</p>
+                <p>You need 70% to pass. Your answers were saved, so you can review and try again when you’re ready.</p>
               </>
             )}
           </div>
         </div>
       )}
 
-      {!submitted && (
+      {!submitted ? (
         <button
-          className={`quiz-submit-btn ${!allAnswered || submitting ? 'disabled' : ''}`}
+          className={`quiz-submit-btn ${!allAnswered || submitting || isHydrating ? 'disabled' : ''}`}
           onClick={handleSubmit}
-          disabled={!allAnswered || submitting}
+          disabled={!allAnswered || submitting || isHydrating}
         >
-          {submitting ? (
+          {submitting || isHydrating ? (
             <>
               <Loader2 className="animate-spin" size={16} />
-              Submitting...
+              {isHydrating ? 'Restoring Quiz...' : 'Submitting...'}
             </>
           ) : (
             'Submit Quiz'
           )}
+        </button>
+      ) : (
+        <button className="quiz-secondary-btn" onClick={handleRetake}>
+          <RotateCcw size={16} />
+          Retake Quiz
         </button>
       )}
     </div>

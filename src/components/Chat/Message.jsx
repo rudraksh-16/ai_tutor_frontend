@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Bot, User, Loader2 } from 'lucide-react';
+import { Bot, User, Loader2, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { QuizCard, parseQuizJSON } from './QuizCard';
 
@@ -32,6 +32,19 @@ export const Message = ({ message, chapterId, isStreaming, hideCurriculum, onQui
   const isQuizMessage = useMemo(() => {
     return isAssistant && (quizData || /^\s*```json/i.test(displayContent) || /^\s*\{/i.test(displayContent));
   }, [isAssistant, quizData, displayContent]);
+
+  if (message.isError) {
+    return (
+      <div className="message-wrapper message-assistant">
+        <div className="avatar ai-avatar">
+          <AlertCircle size={20} />
+        </div>
+        <div className="message-bubble message-bubble-error">
+          <span>{message.content}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={clsx('message-wrapper', isAssistant ? 'message-assistant' : 'message-user')}>
