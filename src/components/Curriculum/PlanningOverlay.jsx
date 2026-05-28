@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Sparkles, CheckCircle2, Rocket } from 'lucide-react';
-import { apiService } from '../../services/api';
+import { apiService, openPlanningStatusSocket } from '../../services/api';
 import './PlanningOverlay.css';
 
 export const PlanningOverlay = ({ topicId }) => {
@@ -12,46 +12,83 @@ export const PlanningOverlay = ({ topicId }) => {
     planning_complete: false,
   });
   const pollIntervalRef = useRef(null);
+  const socketRef = useRef(null);
+  const fallbackStartedRef = useRef(false);
+  const planningCompleteRef = useRef(false);
 
   useEffect(() => {
     if (!topicId) return;
 
     let isMounted = true;
+    fallbackStartedRef.current = false;
+    planningCompleteRef.current = false;
 
-    // ── HTTP Polling ──
-    const startPolling = () => {
-      if (pollIntervalRef.current) return;
-      
-      const poll = async () => {
-        if (!isMounted) return;
-        
-        try {
-          const data = await apiService.getPlanningStatus(topicId);
-          if (!isMounted) return;
-          
-          setStatus(data);
-          
-          if (data.planning_complete) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-          }
-        } catch (err) {
-          console.error('Polling error:', err);
-        }
-      };
-      
-      poll(); // Immediate first poll
-      pollIntervalRef.current = setInterval(poll, 3000);
-    };
-
-    startPolling();
-
-    return () => {
-      isMounted = false;
+    const stopPolling = () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
+    };
+
+    const closeSocket = () => {
+      if (socketRef.current) {
+        const socket = socketRef.current;
+        socketRef.current = null;
+        socket.close();
+      }
+    };
+
+    const handleStatusUpdate = (data) => {
+      if (!isMounted || !data) return;
+
+      planningCompleteRef.current = Boolean(data.planning_complete);
+      setStatus(data);
+
+      if (data.planning_complete) {
+        stopPolling();
+        closeSocket();
+      }
+    };
+
+    const startPolling = () => {
+      if (!isMounted || pollIntervalRef.current || fallbackStartedRef.current) return;
+
+      fallbackStartedRef.current = true;
+
+      const poll = async () => {
+        if (!isMounted) return;
+
+        try {
+          const data = await apiService.getPlanningStatus(topicId);
+          handleStatusUpdate(data);
+        } catch (err) {
+          console.error('Polling error:', err);
+        }
+      };
+
+      poll();
+      pollIntervalRef.current = setInterval(poll, 3000);
+    };
+
+    socketRef.current = openPlanningStatusSocket(topicId, {
+      onStatus: (data) => {
+        handleStatusUpdate(data);
+      },
+      onError: (error) => {
+        console.error('Planner WebSocket error:', error);
+        startPolling();
+      },
+      onClose: () => {
+        if (!planningCompleteRef.current) {
+          startPolling();
+        }
+      },
+    });
+
+    return () => {
+      isMounted = false;
+      stopPolling();
+      closeSocket();
     };
   }, [topicId]);
 

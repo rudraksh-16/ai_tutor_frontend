@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Send, Loader2, Sparkles, PanelRightOpen } from 'lucide-react';
+import { Toast } from '../Toast';
 import { v4 as uuidv4 } from 'uuid';
 import { Message } from '../Chat/Message';
 import { CurriculumCanvas, extractCurriculumFromMessages, parseCurriculum } from './CurriculumCanvas';
@@ -23,12 +24,15 @@ export const CurriculumChat = ({
   const [isPlanning, setIsPlanning] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [curriculumSaved, setCurriculumSaved] = useState(false);
+  const [toast, setToast] = useState(null);
   const [showCanvas, setShowCanvas] = useState(true);
   const [canvasWidth, setCanvasWidth] = useState(420);
   const isDragging = useRef(false);
+  const chatListRef = useRef(null);
   const messagesEndRef = useRef(null);
   const initializationRef = useRef(null);
   const textareaRef = useRef(null);
+  const isStreamingRef = useRef(false);
 
   // Extract the latest curriculum content from messages (works during streaming too)
   const curriculumContent = useMemo(() => {
@@ -53,32 +57,40 @@ export const CurriculumChat = ({
     setIsPlanning(false);
     setCurriculumSaved(false);
 
+    const controller = new AbortController();
+
     const initialize = async () => {
       try {
         let currentTopicTitle = propTopicTitle;
         let currentTopicSummary = '';
         if (!currentTopicTitle) {
-          const data = await apiService.getTopic(topicId);
+          const data = await apiService.getTopic(topicId, controller.signal);
           currentTopicTitle = data.title;
           currentTopicSummary = data.user_summary;
           setTopicTitle(data.title);
         }
 
-        // Check planning status FIRST — if already planning/done, show overlay immediately
-        const status = await apiService.getPlanningStatus(topicId);
-        if (status.topic_status === 'in_progress' || status.topic_status === 'completed') {
+        const status = await apiService.getPlanningStatus(topicId, controller.signal);
+        const planningActive =
+          status.topic_status === 'in_progress'
+          || status.topic_status === 'completed';
+        if (planningActive) {
           setIsPlanning(true);
           setCurriculumSaved(true);
         }
 
-        const history = await apiService.getCurriculumMessages(topicId);
+        const history = await apiService.getCurriculumMessages(topicId, controller.signal);
         if (history && history.length > 0) {
           const filtered = history.filter(m => m.role === 'assistant' || m.role === 'user');
-          setMessages(filtered.map(m => ({
+          const hydratedHistory = filtered.map(m => ({
             ...m,
             id: m.id || uuidv4(),
             timestamp: m.created_at || new Date().toISOString()
-          })));
+          }));
+          setMessages(hydratedHistory);
+          if (!planningActive && hydratedHistory[hydratedHistory.length - 1]?.role === 'user') {
+            resumeConversation();
+          }
         } else {
           // If brand new chat, display the topic summary as the initial user message so it's consistent with reloads
           if (currentTopicSummary) {
@@ -94,22 +106,38 @@ export const CurriculumChat = ({
 
         setIsInitializing(false);
       } catch (err) {
+        if (err.code === 'ERR_CANCELED') return;
         console.error('Failed to initialize:', err);
         setIsInitializing(false);
       }
     };
 
     initialize();
-  }, [topicId]);
+    return () => {
+      controller.abort();
+      initializationRef.current = null;
+    };
+  }, [propTopicTitle, topicId]);
 
   // Scroll to bottom on new messages
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = useCallback((force = false) => {
+    if (!chatListRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = chatListRef.current;
+    const isAtBottom = scrollHeight - scrollTop <= clientHeight + 150;
+
+    if (force || isAtBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }
   }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, isStreaming, scrollToBottom]);
+
+  useEffect(() => {
+    isStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   // Re-focus textarea after streaming ends
   useEffect(() => {
@@ -144,8 +172,64 @@ export const CurriculumChat = ({
     document.body.style.userSelect = 'none';
   }, [handleMouseMove, stopResize]);
 
+  const appendAssistantChunk = useCallback((assistantMessageId, chunk) => {
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === assistantMessageId
+          ? { ...message, content: `${message.content}${chunk}` }
+          : message
+      )
+    );
+  }, []);
+
+  const appendResumedAssistantChunk = useCallback((assistantMessageId, chunk) => {
+    setMessages((prev) => {
+      const hasAssistant = prev.some((message) => message.id === assistantMessageId);
+      if (!hasAssistant) {
+        return [
+          ...prev,
+          {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: chunk,
+            timestamp: new Date().toISOString(),
+          },
+        ];
+      }
+
+      return prev.map((message) =>
+        message.id === assistantMessageId
+          ? { ...message, content: `${message.content}${chunk}` }
+          : message
+      );
+    });
+  }, []);
+
+  const replaceResumedAssistantContent = useCallback((assistantMessageId, content) => {
+    setMessages((prev) => {
+      const hasAssistant = prev.some((message) => message.id === assistantMessageId);
+      if (!hasAssistant) {
+        return [
+          ...prev,
+          {
+            id: assistantMessageId,
+            role: 'assistant',
+            content,
+            timestamp: new Date().toISOString(),
+          },
+        ];
+      }
+
+      return prev.map((message) =>
+        message.id === assistantMessageId
+          ? { ...message, content }
+          : message
+      );
+    });
+  }, []);
+
   // ── Agent communication ──
-  const sendToAgent = (userMessage) => {
+  const sendToAgent = useCallback((userMessage) => {
     setIsStreaming(true);
     const assistantMessageId = uuidv4();
 
@@ -167,22 +251,19 @@ export const CurriculumChat = ({
 
     streamCurriculumChat(
       { topic_id: topicId, user_message: userMessage },
-      (chunk) => {
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === assistantMessageId ? { ...m, content: m.content + chunk } : m
-          )
-        );
-      },
+      (chunk) => appendAssistantChunk(assistantMessageId, chunk),
       () => {
         setIsStreaming(false);
         setIsInitializing(false);
-        if (onRefreshSidebar) onRefreshSidebar();
       },
       (error) => {
+        const msg = typeof error === 'string' ? error : 'Connection error. Please try again.';
         setIsStreaming(false);
         setIsInitializing(false);
-        console.error('Stream error:', error);
+        setToast(msg);
+        setMessages(prev => prev.map(m =>
+          m.id === assistantMessageId ? { ...m, content: msg, isError: true } : m
+        ));
       },
       () => {
         // planning_started event from SSE — agent used upsert_curriculum
@@ -192,12 +273,55 @@ export const CurriculumChat = ({
         if (onRefreshSidebar) onRefreshSidebar();
       }
     );
-  };
+  }, [appendAssistantChunk, onRefreshSidebar, topicId]);
+
+  const resumeConversation = useCallback(() => {
+    if (!topicId || isPlanning || isStreamingRef.current) {
+      return;
+    }
+
+    const assistantMessageId = uuidv4();
+    setIsStreaming(true);
+
+    streamCurriculumChat(
+      { topic_id: topicId, resume_stream: true },
+      (chunk) => appendResumedAssistantChunk(assistantMessageId, chunk),
+      () => {
+        setIsStreaming(false);
+        setIsInitializing(false);
+      },
+      (error) => {
+        const msg = typeof error === 'string' ? error : 'Connection error. Please try again.';
+        setIsStreaming(false);
+        setIsInitializing(false);
+        setToast(msg);
+        setMessages(prev => {
+          const exists = prev.some(m => m.id === assistantMessageId);
+          if (exists) return prev.map(m => m.id === assistantMessageId ? { ...m, content: msg, isError: true } : m);
+          return [...prev, { id: assistantMessageId, role: 'assistant', content: msg, isError: true, timestamp: new Date().toISOString() }];
+        });
+      },
+      () => {
+        setIsStreaming(false);
+        setCurriculumSaved(true);
+        setIsPlanning(true);
+        if (onRefreshSidebar) onRefreshSidebar();
+      },
+      (eventData) => replaceResumedAssistantContent(assistantMessageId, eventData.content || '')
+    );
+  }, [
+    appendResumedAssistantChunk,
+    isPlanning,
+    onRefreshSidebar,
+    replaceResumedAssistantContent,
+    topicId,
+  ]);
 
   const handleSend = () => {
     if (!input.trim() || isStreaming || isPlanning || !topicId) return;
     const currentInput = input;
     setInput('');
+    setToast(null);
     sendToAgent(currentInput);
   };
 
@@ -214,10 +338,10 @@ export const CurriculumChat = ({
       const parsed = parseCurriculum(curriculumContent);
       setIsPlanning(true);
       setCurriculumSaved(true);
-      if (onRefreshSidebar) onRefreshSidebar();
       
       try {
         await apiService.triggerPlanner(topicId, parsed);
+        if (onRefreshSidebar) onRefreshSidebar();
       } catch (err) {
         console.error('Failed to trigger planner:', err);
         setIsPlanning(false);
@@ -231,20 +355,33 @@ export const CurriculumChat = ({
   const hasCanvas = !!curriculumContent;
 
   return (
+    <>
     <div className="curriculum-layout">
       {/* ── Left: Chat or Overlay ── */}
       <div className="chat-container">
         {isPlanning ? (
-          <PlanningOverlay topicId={topicId} />
+          <>
+            {hasCanvas && !showCanvas && (
+              <button
+                className="canvas-toggle-btn"
+                style={{ position: 'absolute', top: 12, right: 12, zIndex: 10 }}
+                onClick={() => setShowCanvas(true)}
+                title="Show curriculum"
+              >
+                <PanelRightOpen size={18} />
+              </button>
+            )}
+            <PlanningOverlay topicId={topicId} />
+          </>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div className="chat-header" style={{ justifyContent: 'space-between' }}>
+            <div className="chat-header chat-header-split">
               <h2>
                 <span>Curriculum Negotiation:</span>
                 <span className="chapter-badge">{topicTitle || 'Loading...'}</span>
               </h2>
 
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div className="chat-header-actions">
                 {hasCanvas && !showCanvas && (
                   <button
                     className="canvas-toggle-btn"
@@ -269,22 +406,24 @@ export const CurriculumChat = ({
               </div>
             </div>
 
-            <div className="messages-list">
-              {messages.map((msg, index) => (
-                <Message
-                  key={msg.id}
-                  message={msg}
-                  isStreaming={isStreaming && index === messages.length - 1 && msg.role === 'assistant'}
-                  hideCurriculum={true}
-                />
-              ))}
-              {isInitializing && messages.length === 0 && (
-                <div className="init-loading">
-                  <Loader2 size={32} className="animate-spin" />
-                  <p>Initializing curriculum agent...</p>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+            <div className="messages-list" ref={chatListRef}>
+              <div className="messages-inner">
+                {messages.map((msg, index) => (
+                  <Message
+                    key={msg.id}
+                    message={msg}
+                    isStreaming={isStreaming && index === messages.length - 1 && msg.role === 'assistant'}
+                    hideCurriculum={true}
+                  />
+                ))}
+                {isInitializing && messages.length === 0 && (
+                  <div className="init-loading">
+                    <Loader2 size={32} className="animate-spin" />
+                    <p>Initializing curriculum agent...</p>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
             </div>
 
             <div className="chat-input-container">
@@ -329,5 +468,7 @@ export const CurriculumChat = ({
         </div>
       )}
     </div>
+    <Toast message={toast} onDismiss={() => setToast(null)} />
+    </>
   );
 };
