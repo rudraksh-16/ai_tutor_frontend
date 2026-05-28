@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, Sparkles, Book, Code, Globe, Database, Terminal, Loader2 } from 'lucide-react';
+import { Send, Sparkles, Book, Code, Globe, Database, Terminal, Loader2, BookOpen, Brain, Zap } from 'lucide-react';
 import './WelcomeView.css';
 
 const suggestions = [
@@ -37,7 +37,7 @@ export const WelcomeView = ({ onCreateTopic, isLoading }) => {
   return (
     <div className="welcome-container">
       <div className="welcome-header">
-        <h1 className="text-gradient">What do you want to learn today?</h1>
+        <h2>What do you want to learn today?</h2>
         <p>Expert AI-driven curriculum generation and personalized tutoring at your fingertips.</p>
       </div>
 
