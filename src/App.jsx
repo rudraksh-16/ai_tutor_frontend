@@ -26,22 +26,26 @@ const CurriculumChatWrapper = ({ onRefreshSidebar }) => {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    if (!topicId) return;
+    const controller = new AbortController();
+
     const checkRedirect = async () => {
-      if (!topicId) return;
       try {
-        const status = await apiService.getPlanningStatus(topicId);
-        // If chapters are already planned (negotiation finalized), redirect to learning
+        const status = await apiService.getPlanningStatus(topicId, controller.signal);
         if (status.planning_complete) {
           navigate(`/topic/${topicId}/learn`, { replace: true });
         } else {
           setChecking(false);
         }
       } catch (err) {
+        if (err.code === 'ERR_CANCELED') return;
         console.error('Guard check failed:', err);
         setChecking(false);
       }
     };
+
     checkRedirect();
+    return () => controller.abort();
   }, [topicId, navigate]);
 
   if (!topicId) return <Navigate to="/" replace />;
@@ -63,14 +67,6 @@ function App() {
   const [isCreatingTopic, setIsCreatingTopic] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    const token = authService.getToken();
-    const currentUserId = authService.getCurrentUserId();
-    if (token && currentUserId) {
-      setIsAuthenticated(true);
-    }
-  }, []);
 
   const refreshSidebar = useCallback(() => {
     setRefreshKey(prev => prev + 1);
