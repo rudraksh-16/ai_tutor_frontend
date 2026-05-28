@@ -12,11 +12,11 @@ export const AuthView = ({ onAuthSuccess }) => {
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [errors, setErrors] = useState([]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
+    setErrors([]);
     setLoading(true);
 
     try {
@@ -29,14 +29,8 @@ export const AuthView = ({ onAuthSuccess }) => {
         onAuthSuccess(response.user_id);
       }
     } catch (err) {
-      if (err.response?.data?.detail) {
-        setError(Array.isArray(err.response.data.detail) 
-          ? err.response.data.detail[0].msg 
-          : err.response.data.detail
-        );
-      } else {
-        setError(err.message || 'An unexpected error occurred');
-      }
+      const fallbackMessage = err.message || 'An unexpected error occurred';
+      setErrors(Array.isArray(err.messages) && err.messages.length > 0 ? err.messages : [fallbackMessage]);
     } finally {
       setLoading(false);
     }
@@ -54,16 +48,23 @@ export const AuthView = ({ onAuthSuccess }) => {
           <p>{isLogin ? 'Welcome back! Please login to continue.' : 'Create a new account to get started.'}</p>
         </div>
 
-        {error && (
+        {errors.length > 0 && (
           <div className="auth-error">
-            {error}
+            <p className="auth-error-title">Please fix the following:</p>
+            <ul className="auth-error-list">
+              {errors.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
           </div>
         )}
 
         <form className="auth-form" onSubmit={handleSubmit}>
           {!isLogin && (
             <div className="input-group">
-              <label htmlFor="name">Name</label>
+              <label htmlFor="name">
+                Name <span className="required-indicator" aria-hidden="true">*</span>
+              </label>
               <input
                 id="name"
                 className="auth-input"
@@ -77,7 +78,9 @@ export const AuthView = ({ onAuthSuccess }) => {
           )}
 
           <div className="input-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">
+              Email <span className="required-indicator" aria-hidden="true">*</span>
+            </label>
             <input
               id="email"
               className="auth-input"
@@ -90,7 +93,9 @@ export const AuthView = ({ onAuthSuccess }) => {
           </div>
 
           <div className="input-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">
+              Password <span className="required-indicator" aria-hidden="true">*</span>
+            </label>
             <div className="password-wrapper">
               <input
                 id="password"
@@ -131,7 +136,7 @@ export const AuthView = ({ onAuthSuccess }) => {
             className="auth-toggle-btn"
             onClick={() => {
               setIsLogin(!isLogin);
-              setError(null);
+              setErrors([]);
             }}
           >
             {isLogin ? 'Sign up' : 'Sign in'}
