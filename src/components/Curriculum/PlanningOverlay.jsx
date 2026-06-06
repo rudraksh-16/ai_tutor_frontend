@@ -4,6 +4,10 @@ import { Loader2, Sparkles, CheckCircle2, Rocket } from 'lucide-react';
 import { apiService, openPlanningStatusSocket } from '../../services/api';
 import './PlanningOverlay.css';
 
+const MAX_FALLBACK_POLLS = 30;
+const INITIAL_POLL_DELAY_MS = 3000;
+const MAX_POLL_DELAY_MS = 30000;
+
 export const PlanningOverlay = ({ topicId }) => {
   const navigate = useNavigate();
   const [status, setStatus] = useState({
@@ -11,7 +15,8 @@ export const PlanningOverlay = ({ topicId }) => {
     planned_chapters: 0,
     planning_complete: false,
   });
-  const pollIntervalRef = useRef(null);
+  const pollTimeoutRef = useRef(null);
+  const pollAttemptRef = useRef(0);
   const socketRef = useRef(null);
   const fallbackStartedRef = useRef(false);
   const planningCompleteRef = useRef(false);
@@ -22,11 +27,12 @@ export const PlanningOverlay = ({ topicId }) => {
     let isMounted = true;
     fallbackStartedRef.current = false;
     planningCompleteRef.current = false;
+    pollAttemptRef.current = 0;
 
     const stopPolling = () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
       }
     };
 
@@ -51,12 +57,18 @@ export const PlanningOverlay = ({ topicId }) => {
     };
 
     const startPolling = () => {
-      if (!isMounted || pollIntervalRef.current || fallbackStartedRef.current) return;
+      if (!isMounted || pollTimeoutRef.current || fallbackStartedRef.current) return;
 
       fallbackStartedRef.current = true;
 
       const poll = async () => {
         if (!isMounted) return;
+        if (pollAttemptRef.current >= MAX_FALLBACK_POLLS) {
+          stopPolling();
+          return;
+        }
+
+        pollAttemptRef.current += 1;
 
         try {
           const data = await apiService.getPlanningStatus(topicId);
@@ -64,14 +76,23 @@ export const PlanningOverlay = ({ topicId }) => {
         } catch (err) {
           console.error('Polling error:', err);
         }
+
+        if (!isMounted || planningCompleteRef.current) return;
+
+        const delay = Math.min(
+          INITIAL_POLL_DELAY_MS * (2 ** Math.min(pollAttemptRef.current - 1, 4)),
+          MAX_POLL_DELAY_MS
+        );
+        pollTimeoutRef.current = setTimeout(poll, delay);
       };
 
       poll();
-      pollIntervalRef.current = setInterval(poll, 3000);
     };
 
     socketRef.current = openPlanningStatusSocket(topicId, {
       onStatus: (data) => {
+        stopPolling();
+        fallbackStartedRef.current = false;
         handleStatusUpdate(data);
       },
       onError: (error) => {

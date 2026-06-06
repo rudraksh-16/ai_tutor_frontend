@@ -417,6 +417,10 @@ export const openPlanningStatusSocket = (topicId, { onStatus, onOpen, onError, o
   try {
     const wsUrl = getWebSocketBaseUrl();
     wsUrl.pathname = `${wsUrl.pathname.replace(/\/$/, '')}/topics/${topicId}/status/ws`;
+    const token = authService.getToken();
+    if (token) {
+      wsUrl.searchParams.set('token', token);
+    }
 
     const socket = new WebSocket(wsUrl.toString());
 

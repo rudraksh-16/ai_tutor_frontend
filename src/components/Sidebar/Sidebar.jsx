@@ -21,7 +21,6 @@ export const Sidebar = ({ refreshKey, onLogout }) => {
   const { theme, toggleTheme } = useTheme();
   const [inProgress, setInProgress] = useState([]);
   const [completed, setCompleted] = useState([]);
-  const [planningCompleteMap, setPlanningCompleteMap] = useState({});
   const [loading, setLoading] = useState(true);
   const hasLoadedOnceRef = useRef(false);
   const [collapsed, setCollapsed] = useState(window.innerWidth <= 768);
@@ -52,24 +51,10 @@ export const Sidebar = ({ refreshKey, onLogout }) => {
         if (showLoadingState) setLoading(true);
 
         const data = await apiService.getSidebar(controller.signal);
-        const inProgressTopics = data.in_progress || [];
-
-        const planningEntries = await Promise.all(
-          inProgressTopics.map(async (topic) => {
-            try {
-              const status = await apiService.getPlanningStatus(topic.id, controller.signal);
-              return [topic.id, Boolean(status.planning_complete)];
-            } catch {
-              return [topic.id, false];
-            }
-          })
-        );
-
         if (controller.signal.aborted) return;
 
-        setInProgress(inProgressTopics);
+        setInProgress(data.in_progress || []);
         setCompleted(data.completed || []);
-        setPlanningCompleteMap(Object.fromEntries(planningEntries));
       } catch (err) {
         if (err.code !== 'ERR_CANCELED') console.error('Failed to load sidebar', err);
       } finally {
@@ -85,8 +70,8 @@ export const Sidebar = ({ refreshKey, onLogout }) => {
   }, [refreshKey]);
 
   // A topic should appear under Learning only after planning is complete.
-  const curriculumTopics = inProgress.filter((topic) => !planningCompleteMap[topic.id]);
-  const learningTopics = inProgress.filter((topic) => Boolean(planningCompleteMap[topic.id]));
+  const curriculumTopics = inProgress.filter((topic) => !topic.planning_complete);
+  const learningTopics = inProgress.filter((topic) => Boolean(topic.planning_complete));
 
   return (
     <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
