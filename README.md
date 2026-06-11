@@ -6,6 +6,26 @@ This repo is the **client only**. The backend lives at [`/Users/rudraksh/AI_Tuto
 
 ---
 
+## Overview
+
+AI Tutor turns open-ended learning goals into structured, interactive courses. Users enter any topic, refine the curriculum with an AI curriculum agent, then learn chapter by chapter through a streaming teacher chat. Progress is tracked through locked/unlocked modules, generated lesson plans, and quiz-based completion.
+
+## Screenshots
+
+### Topic Selection
+
+![AI Tutor topic selection screen](<images/Screenshot 2026-06-09 at 3.54.30 PM.png>)
+
+### Curriculum Negotiation
+
+![AI Tutor curriculum negotiation and overview screen](<images/Screenshot 2026-06-09 at 3.55.26 PM.png>)
+
+### Teacher Session
+
+![AI Tutor teacher session with chapter sidebar](<images/Screenshot 2026-06-09 at 3.55.50 PM.png>)
+
+---
+
 ## Tech Stack
 
 | Layer | Tool |

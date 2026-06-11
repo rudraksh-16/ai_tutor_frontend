@@ -5,7 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const inFlightGetRequests = new Map();
 
 const getWebSocketBaseUrl = () => {
-  const apiUrl = new URL(API_BASE_URL);
+  const apiUrl = new URL(API_BASE_URL, window.location.origin);
   apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
   return apiUrl;
 };

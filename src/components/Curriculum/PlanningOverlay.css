@@ -6,8 +6,6 @@
   align-items: center;
   justify-content: center;
   background: hsla(var(--bg-primary), 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   animation: fadeIn 0.4s ease;
 }
 
@@ -16,16 +14,22 @@
   to { opacity: 1; }
 }
 
-.planning-card {
+.planning-card,
+.planning-card.glass {
   max-width: 520px;
   width: 90%;
   padding: 48px 40px;
-  border-radius: 20px;
+  border-radius: var(--radius-2xl);
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 20px;
+  background: hsl(var(--bg-secondary));
+  border: 1px solid hsl(var(--border-color));
+  box-shadow: var(--shadow-md);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -34,9 +38,15 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.planning-card h2 {
+.planning-card h2,
+.planning-card h2.text-gradient {
+  font-family: var(--font-heading);
   font-size: 1.75rem;
   font-weight: 800;
+  letter-spacing: -0.01em;
+  color: hsl(var(--text-primary));
+  background: none;
+  -webkit-text-fill-color: hsl(var(--text-primary));
 }
 
 .planning-subtitle {
@@ -51,7 +61,7 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, hsla(var(--accent-primary), 0.15), hsla(var(--accent-secondary), 0.15));
+  background: hsla(var(--accent-primary), 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,7 +79,7 @@
 }
 
 .planning-icon-wrapper.complete {
-  background: linear-gradient(135deg, hsla(var(--success), 0.15), hsla(var(--accent-secondary), 0.15));
+  background: hsla(var(--success), 0.15);
   animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -90,7 +100,7 @@
 
 .progress-bar-track {
   width: 100%;
-  height: 8px;
+  height: 7px;
   background: hsl(var(--bg-tertiary));
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -98,7 +108,7 @@
 
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+  background: hsl(var(--accent-primary));
   border-radius: var(--radius-full);
   transition: width 0.5s ease;
 }
@@ -129,7 +139,7 @@
   margin-top: 8px;
   border: none;
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+  background: hsl(var(--accent-primary));
   color: white;
   font-size: 1.1rem;
   font-weight: 700;
@@ -139,6 +149,6 @@
 }
 
 .planning-start-btn:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 24px hsla(var(--accent-primary), 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }

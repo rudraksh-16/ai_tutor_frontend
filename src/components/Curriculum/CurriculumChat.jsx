@@ -26,6 +26,7 @@ export const CurriculumChat = ({
   const [curriculumSaved, setCurriculumSaved] = useState(false);
   const [toast, setToast] = useState(null);
   const [showCanvas, setShowCanvas] = useState(true);
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [canvasWidth, setCanvasWidth] = useState(420);
   const isDragging = useRef(false);
   const chatListRef = useRef(null);
@@ -334,19 +335,25 @@ export const CurriculumChat = ({
 
   const handleFinalize = async () => {
     if (!topicId || isStreaming || !curriculumContent) return;
-    if (window.confirm('Finalize this curriculum and generate lesson plans?')) {
-      const parsed = parseCurriculum(curriculumContent);
-      setIsPlanning(true);
-      setCurriculumSaved(true);
-      
-      try {
-        await apiService.triggerPlanner(topicId, parsed);
-        if (onRefreshSidebar) onRefreshSidebar();
-      } catch (err) {
-        console.error('Failed to trigger planner:', err);
-        setIsPlanning(false);
-        setCurriculumSaved(false);
-      }
+    setShowFinalizeConfirm(true);
+  };
+
+  const confirmFinalize = async () => {
+    if (!topicId || isStreaming || !curriculumContent) return;
+
+    const parsed = parseCurriculum(curriculumContent);
+    setShowFinalizeConfirm(false);
+    setIsPlanning(true);
+    setCurriculumSaved(true);
+
+    try {
+      await apiService.triggerPlanner(topicId, parsed);
+      if (onRefreshSidebar) onRefreshSidebar();
+    } catch (err) {
+      console.error('Failed to trigger planner:', err);
+      setIsPlanning(false);
+      setCurriculumSaved(false);
+      setToast('AI Tutor could not finalize this curriculum. Please try again.');
     }
   };
 
@@ -468,6 +475,45 @@ export const CurriculumChat = ({
         </div>
       )}
     </div>
+    {showFinalizeConfirm && (
+      <div
+        className="ai-confirm-backdrop"
+        role="presentation"
+        onClick={() => setShowFinalizeConfirm(false)}
+      >
+        <div
+          className="ai-confirm-dialog glass"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="finalize-curriculum-title"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="ai-confirm-icon">
+            <Sparkles size={20} />
+          </div>
+          <div className="ai-confirm-content">
+            <h2 id="finalize-curriculum-title">AI Tutor</h2>
+            <p>Finalize this curriculum and generate lesson plans?</p>
+          </div>
+          <div className="ai-confirm-actions">
+            <button
+              type="button"
+              className="ai-confirm-btn ai-confirm-cancel"
+              onClick={() => setShowFinalizeConfirm(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="ai-confirm-btn ai-confirm-primary"
+              onClick={confirmFinalize}
+            >
+              Finalize
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <Toast message={toast} onDismiss={() => setToast(null)} />
     </>
   );

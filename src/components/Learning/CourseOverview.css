@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   CourseOverview — Grasp-style module card layout
+   CourseOverview — calm "Meadow" module layout
    ═══════════════════════════════════════════════════════════ */
 
 .co-container {
@@ -7,6 +7,7 @@
   overflow-y: auto;
   padding: 40px 48px;
   background: hsl(var(--bg-primary));
+  font-family: var(--font-body);
 }
 
 /* ── Header ── */
@@ -22,8 +23,10 @@
 }
 
 .co-header-title {
+  font-family: var(--font-heading);
   font-size: 1.6rem;
-  font-weight: 800;
+  font-weight: 850;
+  letter-spacing: -0.01em;
   color: hsl(var(--text-primary));
 }
 
@@ -43,24 +46,30 @@
 
 /* ── Module Card ── */
 .co-module {
-  background: hsla(var(--bg-secondary), 0.55);
-  border: 1px solid hsla(var(--text-primary), 0.08);
-  border-radius: 16px;
+  background: hsl(var(--bg-secondary));
+  border: 1px solid hsl(var(--border-color));
+  border-radius: var(--radius-xl);
   padding: 28px 28px 20px;
-  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal), border-color var(--transition-normal);
 }
 
 .co-module:hover:not(.locked) {
-  border-color: hsla(var(--text-primary), 0.14);
-  box-shadow: var(--shadow-sm);
+  transform: translateY(-3px);
+  border-color: hsla(var(--accent-primary), 0.4);
+  box-shadow: var(--shadow-md);
 }
 
 .co-module.completed {
-  border-color: hsla(120, 80%, 40%, 0.15);
+  border-color: hsla(var(--success), 0.4);
 }
 
 .co-module.ready {
-  border-color: hsla(var(--accent-primary), 0.28);
+  border-color: hsla(var(--accent-primary), 0.4);
+}
+
+.co-module.locked {
+  opacity: 0.7;
 }
 
 /* ── Module Header ── */
@@ -76,10 +85,10 @@
 }
 
 .co-module-label {
-  font-size: 0.7rem;
+  font-size: 11px;
   font-weight: 800;
-  color: hsl(var(--accent-secondary));
-  letter-spacing: 1.5px;
+  color: hsl(var(--text-muted));
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -90,14 +99,14 @@
 }
 
 .co-module-icon-wrap {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: hsla(var(--bg-primary), 0.7);
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: hsl(var(--bg-tertiary));
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--accent-secondary));
+  color: hsl(var(--accent-primary));
   flex-shrink: 0;
 }
 
@@ -107,11 +116,12 @@
 }
 
 .co-module.ready .co-module-icon-wrap {
-  background: hsla(var(--accent-primary), 0.12);
+  background: hsla(var(--accent-primary), 0.14);
   color: hsl(var(--accent-primary));
 }
 
 .co-module-title {
+  font-family: var(--font-heading);
   font-size: 1.15rem;
   font-weight: 700;
   color: hsl(var(--text-primary));
@@ -123,7 +133,7 @@
   color: hsl(var(--accent-primary));
 }
 
-/* ── Badges ── */
+/* ── Badges / Chips ── */
 .co-module-actions {
   flex-shrink: 0;
 }
@@ -132,70 +142,72 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
-  border-radius: 20px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
   font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  background: hsl(var(--bg-secondary));
+  border: 1px solid hsl(var(--border-color));
+  transition: transform var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .co-badge-completed {
-  background: transparent;
-  border: 1px solid hsla(var(--success), 0.45);
+  border-color: hsla(var(--success), 0.45);
   color: hsl(var(--success));
 }
 
 .co-badge-ready {
-  background: transparent;
-  border: 1px solid hsla(var(--accent-primary), 0.35);
+  border-color: hsla(var(--accent-primary), 0.45);
   color: hsl(var(--accent-primary));
-  transition: all 0.2s ease;
 }
 
 .co-badge-ready:hover {
-  background: hsla(var(--accent-primary), 0.1);
+  transform: translateY(-1px);
+  border-color: hsl(var(--accent-primary));
 }
 
 .co-badge-generating {
-  background: hsla(var(--warning), 0.1);
-  border: 1px solid hsla(var(--warning), 0.3);
+  border-color: hsla(var(--warning), 0.4);
   color: hsl(var(--warning));
 }
 
 .co-badge-locked {
-  background: transparent;
   color: hsl(var(--text-muted));
 }
 
-/* ── Generate Button ── */
+/* ── Generate Button (pill chip) ── */
 .co-generate-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 20px;
-  border: 1px solid hsla(var(--accent-primary), 0.35);
-  border-radius: 20px;
-  background: hsla(var(--accent-primary), 0.08);
-  color: hsl(var(--accent-secondary));
+  padding: 8px 14px;
+  border: 1px solid hsl(var(--border-color));
+  border-radius: var(--radius-full);
+  background: hsl(var(--bg-secondary));
+  color: hsl(var(--text-primary));
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .co-generate-btn:hover {
-  background: hsla(var(--accent-primary), 0.16);
-  border-color: hsl(var(--accent-primary));
-  color: hsl(var(--text-primary));
   transform: translateY(-1px);
+  border-color: hsl(var(--accent-primary));
+  color: hsl(var(--accent-primary));
+}
+
+.co-lock-icon-simple {
+  color: hsl(var(--text-muted));
 }
 
 /* ── Section Items ── */
 .co-sections-wrap {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid hsla(var(--text-primary), 0.07);
+  border-top: 1px solid hsl(var(--border-color));
 }
 
 .co-sections {
@@ -209,16 +221,16 @@
   align-items: center;
   gap: 14px;
   padding: 12px 16px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background var(--transition-fast), color var(--transition-fast);
   color: hsl(var(--text-secondary));
   font-size: 0.9rem;
   font-weight: 500;
 }
 
 .co-section-item:hover {
-  background: hsla(var(--text-primary), 0.05);
+  background: hsl(var(--bg-tertiary));
   color: hsl(var(--text-primary));
 }
 
@@ -229,8 +241,8 @@
 .co-section-num {
   width: 24px;
   height: 24px;
-  border-radius: 50%;
-  background: hsla(var(--bg-primary), 0.72);
+  border-radius: var(--radius-full);
+  background: hsl(var(--bg-tertiary));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -265,16 +277,16 @@
   margin-top: 8px;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  color: hsl(var(--accent-secondary));
+  border-radius: var(--radius-sm);
+  color: hsl(var(--accent-primary));
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .co-show-more:hover {
-  background: hsla(var(--text-primary), 0.05);
+  background: hsl(var(--bg-tertiary));
   color: hsl(var(--text-primary));
 }
 

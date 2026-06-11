@@ -59,7 +59,7 @@ export const InlineQuiz = ({ sectionId, onPass }) => {
 
   const handleSubmit = async () => {
     if (Object.keys(answers).length < questions.length) {
-      alert('Please answer all questions before submitting.');
+      alert('AI Tutor: Please answer all questions before submitting.');
       return;
     }
 

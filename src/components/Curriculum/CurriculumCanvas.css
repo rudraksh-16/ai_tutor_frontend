@@ -5,7 +5,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid hsla(var(--text-primary), 0.08);
+  border-left: 1px solid hsl(var(--border-color));
   background: hsl(var(--bg-secondary));
   animation: canvasPanelSlideIn 0.35s ease forwards;
 }
@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid hsla(var(--text-primary), 0.06);
+  border-bottom: 1px solid hsl(var(--border-color));
   flex-shrink: 0;
 }
 
@@ -39,8 +39,10 @@
 }
 
 .canvas-panel-title-row h3 {
+  font-family: var(--font-heading);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: hsl(var(--text-primary));
 }
 
@@ -63,7 +65,7 @@
 
 .canvas-close-btn:hover {
   color: hsl(var(--text-primary));
-  background: hsla(var(--text-primary), 0.08);
+  background: hsl(var(--bg-tertiary));
 }
 
 /* ── Panel Body ── */
@@ -77,12 +79,11 @@
 }
 
 .canvas-topic-title {
+  font-family: var(--font-heading);
   font-size: 1.15rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: hsl(var(--text-primary));
   line-height: 1.4;
 }
 
@@ -94,10 +95,10 @@
 }
 
 .canvas-chapter-card {
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 16px;
-  background: hsla(var(--bg-tertiary), 0.5);
-  border: 1px solid hsla(var(--text-primary), 0.06);
+  background: hsl(var(--bg-tertiary));
+  border: 1px solid hsl(var(--border-color));
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -108,8 +109,8 @@
 }
 
 .canvas-chapter-card:hover {
-  border-color: hsla(var(--accent-primary), 0.3);
-  background: hsla(var(--bg-tertiary), 0.8);
+  border-color: hsl(var(--accent-primary));
+  background: hsla(var(--accent-primary), 0.12);
 }
 
 @keyframes canvasCardFadeIn {
@@ -127,13 +128,14 @@
 }
 
 .canvas-chapter-num {
-  min-width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+  min-width: 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: hsl(var(--accent-primary));
   color: white;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -141,8 +143,10 @@
 }
 
 .canvas-chapter-title {
+  font-family: var(--font-heading);
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: hsl(var(--text-primary));
   line-height: 1.4;
 }
@@ -153,7 +157,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-left: 38px;
+  padding-left: 36px;
 }
 
 .canvas-outline-item {

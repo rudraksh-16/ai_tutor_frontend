@@ -93,7 +93,7 @@ function App() {
       refreshSidebar();
       navigate(`/topic/${newTopic.id}/curriculum`);
     } catch (err) {
-      alert('Failed to create topic');
+      alert('AI Tutor could not create this topic. Please try again.');
       console.error(err);
     } finally {
       setIsCreatingTopic(false);

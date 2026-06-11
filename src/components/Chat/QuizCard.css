@@ -1,8 +1,9 @@
 /* ── Quiz Card Container ── */
 .quiz-card-container {
-  background: hsla(var(--bg-secondary), 0.6);
-  border: 1px solid hsla(var(--accent-primary), 0.15);
-  border-radius: var(--radius-lg);
+  background: hsl(var(--bg-secondary));
+  border: 1px solid hsl(var(--border-color));
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
   padding: 20px;
   margin: 4px 0;
   animation: fadeIn 0.3s ease;
@@ -18,8 +19,10 @@
 
 .quiz-card-header h3 {
   margin: 0;
+  font-family: var(--font-heading);
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .quiz-question-count {
@@ -27,6 +30,12 @@
   font-size: 0.8rem;
   opacity: 0.7;
   color: hsl(var(--text-secondary));
+}
+
+.quiz-threshold-note {
+  font-size: 0.8rem;
+  color: hsl(var(--text-muted));
+  margin-bottom: 16px;
 }
 
 /* ── Individual Question ── */
@@ -38,20 +47,20 @@
 
 .quiz-question {
   padding: 16px;
-  border-radius: var(--radius-md);
-  background: hsla(var(--bg-primary), 0.5);
-  border: 1px solid hsla(var(--text-primary), 0.06);
-  transition: border-color 0.3s ease;
+  border-radius: var(--radius-lg);
+  background: hsl(var(--bg-primary));
+  border: 1px solid hsl(var(--border-color));
+  transition: border-color 0.3s ease, background 0.3s ease;
 }
 
 .quiz-question.correct {
-  border-color: hsla(145, 65%, 45%, 0.4);
-  background: hsla(145, 65%, 45%, 0.05);
+  border-color: hsla(var(--success), 0.4);
+  background: hsla(var(--success), 0.08);
 }
 
 .quiz-question.wrong {
-  border-color: hsla(0, 70%, 55%, 0.3);
-  background: hsla(0, 70%, 55%, 0.05);
+  border-color: hsla(var(--error), 0.35);
+  background: hsla(var(--error), 0.07);
 }
 
 .quiz-question-text {
@@ -79,10 +88,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid hsla(var(--text-primary), 0.1);
-  background: hsla(var(--bg-primary), 0.4);
+  padding: 11px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid hsl(var(--border-color));
+  background: hsl(var(--bg-secondary));
   color: hsl(var(--text-primary));
   cursor: pointer;
   transition: all 0.2s ease;
@@ -93,22 +102,22 @@
 
 .quiz-option:hover:not(:disabled) {
   border-color: hsla(var(--accent-primary), 0.4);
-  background: hsla(var(--accent-primary), 0.08);
+  transform: translateY(-1px);
 }
 
 .quiz-option.selected {
-  border-color: hsl(var(--accent-primary));
-  background: hsla(var(--accent-primary), 0.12);
+  border-color: hsla(var(--accent-primary), 0.4);
+  background: hsla(var(--accent-primary), 0.18);
 }
 
 .quiz-option.correct-option {
-  border-color: hsl(145, 65%, 45%);
-  background: hsla(145, 65%, 45%, 0.12);
+  border-color: hsla(var(--success), 0.4);
+  background: hsla(var(--success), 0.15);
 }
 
 .quiz-option.wrong-option {
-  border-color: hsl(0, 70%, 55%);
-  background: hsla(0, 70%, 55%, 0.12);
+  border-color: hsla(var(--error), 0.4);
+  background: hsla(var(--error), 0.15);
 }
 
 .quiz-option:disabled {
@@ -121,8 +130,8 @@
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 50%;
-  background: hsla(var(--text-primary), 0.08);
+  border-radius: var(--radius-full);
+  background: hsl(var(--bg-tertiary));
   font-weight: 600;
   font-size: 0.8rem;
   flex-shrink: 0;
@@ -130,17 +139,17 @@
 
 .quiz-option.selected .quiz-option-letter {
   background: hsl(var(--accent-primary));
-  color: white;
+  color: #fff;
 }
 
 .quiz-option.correct-option .quiz-option-letter {
-  background: hsl(145, 65%, 45%);
-  color: white;
+  background: hsl(var(--success));
+  color: #fff;
 }
 
 .quiz-option.wrong-option .quiz-option-letter {
-  background: hsl(0, 70%, 55%);
-  color: white;
+  background: hsl(var(--error));
+  color: #fff;
 }
 
 .quiz-option-text {
@@ -148,12 +157,12 @@
 }
 
 .quiz-icon-correct {
-  color: hsl(145, 65%, 45%);
+  color: hsl(var(--success));
   flex-shrink: 0;
 }
 
 .quiz-icon-wrong {
-  color: hsl(0, 70%, 55%);
+  color: hsl(var(--error));
   flex-shrink: 0;
 }
 
@@ -196,21 +205,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   width: 100%;
   margin-top: 20px;
   padding: 12px 20px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: none;
-  background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
-  color: white;
-  font-weight: 600;
+  background: hsl(var(--accent-primary));
+  color: #fff;
+  font-weight: 800;
   font-size: 0.95rem;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
   transition: opacity 0.2s, transform 0.2s;
 }
 
 .quiz-submit-btn:hover:not(:disabled) {
-  opacity: 0.9;
   transform: translateY(-1px);
 }
 
@@ -227,28 +237,28 @@
   width: 100%;
   margin-top: 16px;
   padding: 12px 20px;
-  border-radius: var(--radius-md);
-  border: 1px solid hsla(var(--text-primary), 0.12);
-  background: hsla(var(--bg-primary), 0.55);
+  border-radius: var(--radius-lg);
+  border: 1px solid hsl(var(--border-color));
+  background: hsl(var(--bg-secondary));
   color: hsl(var(--text-primary));
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .quiz-secondary-btn:hover {
-  background: hsla(var(--accent-primary), 0.08);
-  border-color: hsla(var(--accent-primary), 0.3);
+  border-color: hsla(var(--accent-primary), 0.4);
+  transform: translateY(-1px);
 }
 
 /* ── Result Banner ── */
 .quiz-result-banner {
   margin-top: 24px;
   padding: 24px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, hsla(145, 65%, 45%, 0.15), hsla(180, 60%, 45%, 0.1));
-  border: 1px solid hsla(145, 65%, 45%, 0.3);
+  border-radius: var(--radius-xl);
+  background: hsla(var(--success), 0.12);
+  border: 1px solid hsla(var(--success), 0.3);
   text-align: center;
   animation: slideUp 0.4s ease;
 }
@@ -260,14 +270,15 @@
   gap: 12px;
   font-size: 1.3rem;
   font-weight: 700;
-  color: hsl(145, 65%, 50%);
+  color: hsl(var(--success));
   margin-bottom: 12px;
 }
 
 .quiz-result-message h4 {
   margin: 0 0 8px;
+  font-family: var(--font-heading);
   font-size: 1.2rem;
-  font-weight: 600;
+  font-weight: 800;
   color: hsl(var(--text-primary));
 }
 
